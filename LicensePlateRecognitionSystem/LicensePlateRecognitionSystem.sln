@@ -1,0 +1,30 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LPRS_Client", "LPRS_Client\LPRS_Client.vcxproj", "{BE6C8182-E8E6-40E2-B630-3A3307D39637}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LPRS_Server", "LPRS_Server\LPRS_Server.vcxproj", "{F8B2F436-9606-4EE9-B6EA-FB6162DA13E2}"
+EndProject
+Global
+	GlobalSection(SubversionScc) = preSolution
+		Svn-Managed = True
+		Manager = AnkhSVN - Subversion Support for Visual Studio
+	EndGlobalSection
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BE6C8182-E8E6-40E2-B630-3A3307D39637}.Debug|Win32.ActiveCfg = Debug|Win32
+		{BE6C8182-E8E6-40E2-B630-3A3307D39637}.Debug|Win32.Build.0 = Debug|Win32
+		{BE6C8182-E8E6-40E2-B630-3A3307D39637}.Release|Win32.ActiveCfg = Release|Win32
+		{BE6C8182-E8E6-40E2-B630-3A3307D39637}.Release|Win32.Build.0 = Release|Win32
+		{F8B2F436-9606-4EE9-B6EA-FB6162DA13E2}.Debug|Win32.ActiveCfg = Debug|Win32
+		{F8B2F436-9606-4EE9-B6EA-FB6162DA13E2}.Debug|Win32.Build.0 = Debug|Win32
+		{F8B2F436-9606-4EE9-B6EA-FB6162DA13E2}.Release|Win32.ActiveCfg = Release|Win32
+		{F8B2F436-9606-4EE9-B6EA-FB6162DA13E2}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
