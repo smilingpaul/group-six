@@ -25,6 +25,11 @@ public:
 	SOCKET  m_hSocket;
 	CString m_strFileName;
 	CString	m_strPathName;
+	
+	int m_iPort;
+	CProgressCtrl m_Progress;
+	CListCtrl m_ListControl;
+	CIPAddressCtrl m_cSvrIP;
 
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV Ö§³Ö
@@ -34,19 +39,17 @@ protected:
 public:
 	HICON m_hIcon;
 	DECLARE_MESSAGE_MAP()
-	CIPAddressCtrl m_cSvrIP;
-	int m_iPort;
-	CProgressCtrl m_Progress;
+	
+	
 	virtual BOOL OnInitDialog();
 	afx_msg void OnBnClickedBtnbrows();
 	afx_msg void OnBnClickedBtndelete();
 	afx_msg void OnBnClickedOk();
 	afx_msg void OnBnClickedBtnstop();
 	afx_msg void OnBnClickedCancel();
-	CListCtrl m_ListControl;
+	
 	afx_msg void OnPaint();
 	afx_msg void OnDestroy();
 	virtual BOOL DestroyWindow();
 	afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
-	afx_msg void OnStnClickedStaticlast();
 };
