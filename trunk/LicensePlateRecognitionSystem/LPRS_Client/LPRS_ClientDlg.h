@@ -3,7 +3,10 @@
 //
 
 #pragma once
+#include <Winsock2.h>
 #include "afxwin.h"
+#include "afxcmn.h"
+#include "DAL.h"
 
 
 // CLPRS_ClientDlg ¶Ô»°¿ò
