@@ -5,121 +5,360 @@
 #include "stdafx.h"
 #include "LPRS_Client.h"
 #include "LPRS_ClientDlg.h"
-#include "afxdialogex.h"
+#include "stdlib.h"
 
-#ifdef _DEBUG
-#define new DEBUG_NEW
-#endif
+#pragma comment(lib,"Ws2_32")
+CString arr[10]={NULL};
+CString arrName[10]={NULL};
 
+// LPRS_ClientDlg 对话框
 
-// 用于应用程序“关于”菜单项的 CAboutDlg 对话框
+IMPLEMENT_DYNAMIC(LPRS_ClientDlg, CDialog)
 
-class CAboutDlg : public CDialogEx
+UINT SendFile(void *p/*窗口指针*/)
 {
-public:
-	CAboutDlg();
+    
 
-// 对话框数据
-	enum { IDD = IDD_ABOUTBOX };
+	CString strError;
+	ASSERT(p!=NULL);//
+	LPRS_ClientDlg *pDlg = (LPRS_ClientDlg*)p;
+	CString strIP;
+	pDlg->m_cSvrIP.GetWindowText(strIP);
 
-	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
+	sockaddr_in addr;
+	addr.sin_family=AF_INET;//表示在INT上通信
+	addr.sin_addr.S_un.S_addr=inet_addr((LPSTR)(LPCTSTR)strIP.GetBuffer(0));
+	addr.sin_port=htons(pDlg->m_iPort); //转换为网络字节序
 
-// 实现
-protected:
-	DECLARE_MESSAGE_MAP()
-};
-
-CAboutDlg::CAboutDlg() : CDialogEx(CAboutDlg::IDD)
-{
-}
-
-void CAboutDlg::DoDataExchange(CDataExchange* pDX)
-{
-	CDialogEx::DoDataExchange(pDX);
-}
-
-BEGIN_MESSAGE_MAP(CAboutDlg, CDialogEx)
-END_MESSAGE_MAP()
-
-
-// CLPRS_ClientDlg 对话框
-
-
-
-
-CLPRS_ClientDlg::CLPRS_ClientDlg(CWnd* pParent /*=NULL*/)
-	: CDialogEx(CLPRS_ClientDlg::IDD, pParent)
-{
-	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
-}
-
-void CLPRS_ClientDlg::DoDataExchange(CDataExchange* pDX)
-{
-	CDialogEx::DoDataExchange(pDX);
-}
-
-BEGIN_MESSAGE_MAP(CLPRS_ClientDlg, CDialogEx)
-	ON_WM_SYSCOMMAND()
-	ON_WM_PAINT()
-	ON_WM_QUERYDRAGICON()
-END_MESSAGE_MAP()
-
-
-// CLPRS_ClientDlg 消息处理程序
-
-BOOL CLPRS_ClientDlg::OnInitDialog()
-{
-	CDialogEx::OnInitDialog();
-
-	// 将“关于...”菜单项添加到系统菜单中。
-
-	// IDM_ABOUTBOX 必须在系统命令范围内。
-	ASSERT((IDM_ABOUTBOX & 0xFFF0) == IDM_ABOUTBOX);
-	ASSERT(IDM_ABOUTBOX < 0xF000);
-
-	CMenu* pSysMenu = GetSystemMenu(FALSE);
-	if (pSysMenu != NULL)
+	int ret=0;
+	int error=0;
+	ret=connect(pDlg->m_hSocket,(LPSOCKADDR)&addr,sizeof(addr));//主动连接服务器
+	if(ret==SOCKET_ERROR)
 	{
-		BOOL bNameValid;
-		CString strAboutMenu;
-		bNameValid = strAboutMenu.LoadString(IDS_ABOUTBOX);
-		ASSERT(bNameValid);
-		if (!strAboutMenu.IsEmpty())
-		{
-			pSysMenu->AppendMenu(MF_SEPARATOR);
-			pSysMenu->AppendMenu(MF_STRING, IDM_ABOUTBOX, strAboutMenu);
-		}
+		strError.Format(_T("Connect Error:%d "),error=WSAGetLastError());
+		AfxMessageBox(strError);
+		closesocket(pDlg->m_hSocket);
+		return -1;
 	}
 
-	// 设置此对话框的图标。当应用程序主窗口不是对话框时，框架将自动
-	//  执行此操作
-	SetIcon(m_hIcon, TRUE);			// 设置大图标
-	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
-	// TODO: 在此添加额外的初始化代码
+	//文件操作
+	int num = ((CListCtrl*)(pDlg->GetDlgItem(IDC_LIST1)))->GetItemCount();
+	CString strNum;
+	strNum.Format(_T("%d"),num);
+	int ret1=send(pDlg->m_hSocket,(LPSTR)(LPCTSTR)strNum, 10, 0);	//发送文件的个数
 
-	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
+	for(int j = 0; j < num; ++j)
+	{
+		
+		int  iEnd =0;
+		int  ilen =0;
+		long iTmp =0;
+		long lFileSize = 0;
+		CString str = _T(" ");
+		CString strPathName = arr[j];
+		
+		CFile file;
+		if(!file.Open(strPathName, CFile::modeRead | CFile::typeBinary))
+		{
+			AfxMessageBox(_T("打开文件失败"));
+			return -1;
+		}
+		lFileSize = file.GetLength();
+
+		pDlg->m_Progress.SetRange32(0, lFileSize);	//设置进度条范围
+		pDlg->m_Progress.SetStep(1);	            //设置进度条步长
+
+		char temp[1024];   //修改         	            //首先用来存放文件大小，后面用作发送文件缓冲区
+		memset(temp,0,sizeof(temp)); 
+		ltoa(lFileSize, temp, 10);                  //转化为字符
+
+	    str = arrName[j];     //获取文件名字
+		str += "*";
+		str += temp;
+		int i=str.GetLength();
+
+		ret1 = send(pDlg->m_hSocket, (LPSTR)(LPCTSTR)str, 100, 0);	//发送文件的名称和大小
+
+
+		if (ret1==SOCKET_ERROR)
+		{
+				strError.Format(_T("Send File: %d "),error=WSAGetLastError());
+				AfxMessageBox(strError);
+				return -1;
+		}
+	    
+		/////////////////////////发送文件///////////////////////////////////////////
+		int flagFileSize = 0;
+		while (1)
+		{
+			
+			ilen = file.Read(temp, 1024);
+			
+			if (ilen < 1024)
+			{
+				flagFileSize += ilen;  //修改
+				iEnd = send(pDlg->m_hSocket,temp,1024,0);
+				break;
+			}
+			flagFileSize += ilen;  //修改
+			iEnd = send(pDlg->m_hSocket,temp,ilen,0);
+			if (iEnd == SOCKET_ERROR)
+			{
+				strError.Format(_T("Send File : %d"),error=WSAGetLastError());
+				AfxMessageBox(strError);
+				break;
+			}
+			iTmp += iEnd;
+			pDlg -> m_Progress.SetPos( iTmp );
+		
+		}
+        int n = 0;   
+		file.Close();
+		pDlg->m_ListControl.DeleteItem(0);
+		
+		/*if (iTmp == lFileSize)
+		{
+			//AfxMessageBox("文件发送成功！");
+			
+		}
+		else
+		{
+			strError.Format(str+"文件发送失败");
+			AfxMessageBox(strError);
+			return 0;
+		}*/
+		
+
+	}
+	
+	/////////////////判断发送是否成功、结束处理////////////////////////////////////
+	closesocket(pDlg->m_hSocket);
+	
+	ExitThread(0);
+	return 0;
 }
 
-void CLPRS_ClientDlg::OnSysCommand(UINT nID, LPARAM lParam)
+
+LPRS_ClientDlg::LPRS_ClientDlg(CWnd* pParent /*=NULL*/)
+	: CDialog(LPRS_ClientDlg::IDD, pParent)
+	, m_iPort(4000)
 {
-	if ((nID & 0xFFF0) == IDM_ABOUTBOX)
+	m_hSocket=NULL;
+}
+
+LPRS_ClientDlg::~LPRS_ClientDlg()
+{
+}
+
+void LPRS_ClientDlg::DoDataExchange(CDataExchange* pDX)
+{
+	CDialog::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_IPADDRESS1, m_cSvrIP);
+	DDX_Text(pDX, IDC_EDIT1, m_iPort);
+	DDX_Control(pDX, IDC_PROGRESS1, m_Progress);
+	DDX_Control(pDX, IDC_LIST1, m_ListControl);
+}
+
+
+BEGIN_MESSAGE_MAP(LPRS_ClientDlg, CDialog)
+	ON_BN_CLICKED(IDC_BTNBROWS, &LPRS_ClientDlg::OnBnClickedBtnbrows)
+	ON_BN_CLICKED(IDC_BTNDELETE, &LPRS_ClientDlg::OnBnClickedBtndelete)
+	ON_BN_CLICKED(IDOK, &LPRS_ClientDlg::OnBnClickedOk)
+	ON_BN_CLICKED(IDC_BTNSTOP, &LPRS_ClientDlg::OnBnClickedBtnstop)
+	ON_BN_CLICKED(IDCANCEL, &LPRS_ClientDlg::OnBnClickedCancel)
+	ON_WM_PAINT()
+	ON_WM_DESTROY()
+	ON_WM_CTLCOLOR()
+END_MESSAGE_MAP()
+
+
+// LPRS_ClientDlg 消息处理程序
+
+BOOL LPRS_ClientDlg::OnInitDialog()
+{
+	CDialog::OnInitDialog();
+
+	// TODO:  在此添加额外的初始化
+
+	this->m_ListControl.InsertColumn(0,_T("文件名"),LVCFMT_LEFT,120); 
+	this->m_ListControl.InsertColumn(1,_T("文件路径"),LVCFMT_LEFT,250);
+	
+	this->UpdateData(false);
+	LPRS_ClientDlg dlg;
+
+	//显示ip和端口
+
+	CString str2,str3;
+	CString filename=_T("..\\LPRS_Client\\port.txt");
+	CStdioFile f2;
+	CFileException fileException;
+	if(!f2.Open(filename,CFile::modeReadWrite,&fileException))
 	{
-		CAboutDlg dlgAbout;
-		dlgAbout.DoModal();
+		MessageBox(_T("文件打不开"));
 	}
 	else
 	{
-		CDialogEx::OnSysCommand(nID, lParam);
+		
+		f2.SeekToBegin();
+		f2.ReadString(str2);
+		m_cSvrIP.SetWindowTextW(str2);
+		f2.ReadString(str3);
+		m_iPort=_ttof(str3);
+		UpdateData(false);
+		f2.Close();
 	}
+
+
+	UpdateData(FALSE);
+
+
+	//GetDlgItem(IDC_BTNDELETE)->EnableWindow(false);//将删除按钮设置为不可用
+
+    //////////////
+	WSADATA wsaData;
+	WORD version=MAKEWORD(2,0);
+	int ret=WSAStartup(version,&wsaData);
+	if(ret!=0) 
+	{
+		MessageBox(_T("Init  Error"));
+		return FALSE;
+	}
+
+	return TRUE;  // return TRUE unless you set the focus to a control
+	// 异常: OCX 属性页应返回 FALSE
 }
 
-// 如果向对话框添加最小化按钮，则需要下面的代码
-//  来绘制该图标。对于使用文档/视图模型的 MFC 应用程序，
-//  这将由框架自动完成。
+void LPRS_ClientDlg::OnBnClickedBtnbrows()
+{
+	// TODO: 在此添加控件通知处理程序代码
 
-void CLPRS_ClientDlg::OnPaint()
+	// 设置过滤器   
+    TCHAR szFilter[] = _T("所有文件(*.*)|*.*|图片文件(*.bmp)|*.bmp|");   
+    // 构造打开文件对话框   
+    //CFileDialog fileDlg(TRUE, _T("bmp"), NULL, 0, szFilter, this);
+
+	CFileDialog fileDlg(TRUE, NULL, NULL, OFN_HIDEREADONLY|OFN_OVERWRITEPROMPT|OFN_ALLOWMULTISELECT, _T("所有文件(*.*)|*.*|图片文件(*.bmp)|*.bmp|图片文件(*.jpg)|*.jpg||"), this);
+	fileDlg.m_ofn.lpstrTitle = _T("打开");
+
+	 if (IDOK == fileDlg.DoModal())   
+    {   
+        // 如果点击了文件对话框上的“打开”按钮，则将选择的文件路径显示到编辑框里   
+		/*m_strFileName=fileDlg.GetFileName();
+        m_strPathName = fileDlg.GetPathName(); 
+
+		this->m_ListControl.InsertItem(0,m_strFileName);
+		this->m_ListControl.SetItemText(0,1,m_strPathName);
+		*/
+
+		POSITION pos = fileDlg.GetStartPosition();
+
+		while(pos)
+		{
+			m_strPathName = fileDlg.GetNextPathName(pos);
+			//打开文件
+			CFile file(m_strPathName, CFile::modeRead);
+			m_strFileName = file.GetFileName();
+			//关闭文件
+			file.Close();
+			UpdateData(FALSE);
+			
+
+			//加入文件列表
+			this->m_ListControl.InsertItem(0,m_strFileName);
+			this->m_ListControl.SetItemText(0,1,m_strPathName);
+		}
+			
+		  
+    }
+}
+
+
+
+void LPRS_ClientDlg::OnBnClickedBtndelete()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	POSITION p=m_ListControl.GetFirstSelectedItemPosition();
+
+	//CString str1;
+	//str1.Format("%d",p);
+	//this->MessageBox(str1);
+
+	while (p)
+	{ 
+		int nSelected = m_ListControl.GetNextSelectedItem(p); 
+
+		//str1.Format("%d",nSelected);
+		//this->MessageBox(str1);
+
+		m_ListControl.DeleteItem(nSelected); 
+		p=m_ListControl.GetFirstSelectedItemPosition(); 
+	} 
+}
+
+
+void LPRS_ClientDlg::InitSock()//
+{
+    
+
+	if(m_hSocket)//如果已经创建，先关闭
+	{
+		closesocket(m_hSocket);
+        m_hSocket=NULL;
+	}
+	else
+	{
+		m_hSocket=socket(AF_INET,SOCK_STREAM,0);
+		ASSERT(m_hSocket!=NULL);//
+	}
+
+
+}
+
+void LPRS_ClientDlg::OnBnClickedOk()
+{
+	// TODO: 在此添加控件通知处理程序代码
+
+	UpdateData();
+	m_hSocket=NULL;
+	InitSock();//初始化SOCK。BIND
+    CFileFind find;
+	int num = m_ListControl.GetItemCount();
+	for(int i =0;i < num; ++i)
+	{
+		arr[i] = m_ListControl.GetItemText(i,1);
+		arrName[i] = m_ListControl.GetItemText(i,0);
+		
+	}
+
+  
+	if(!find.FindFile(m_strPathName))
+	{
+		MessageBox(_T("文件路径无效","提醒"));
+		return;
+	}
+
+	AfxBeginThread(SendFile, this);
+
+	//OnOK();
+}
+
+void LPRS_ClientDlg::OnBnClickedBtnstop()
+{
+	// TODO: 在此添加控件通知处理程序代码
+}
+
+void LPRS_ClientDlg::OnBnClickedCancel()
+{
+	// TODO: 在此添加控件通知处理程序代码
+
+	
+
+	OnCancel();
+
+}
+
+void LPRS_ClientDlg::OnPaint()
 {
 	if (IsIconic())
 	{
@@ -127,7 +366,7 @@ void CLPRS_ClientDlg::OnPaint()
 
 		SendMessage(WM_ICONERASEBKGND, reinterpret_cast<WPARAM>(dc.GetSafeHdc()), 0);
 
-		// 使图标在工作区矩形中居中
+		// 使图标在工作矩形中居中
 		int cxIcon = GetSystemMetrics(SM_CXICON);
 		int cyIcon = GetSystemMetrics(SM_CYICON);
 		CRect rect;
@@ -140,14 +379,53 @@ void CLPRS_ClientDlg::OnPaint()
 	}
 	else
 	{
-		CDialogEx::OnPaint();
+		CRect rect;
+        CPaintDC dc(this);
+        GetClientRect(rect);
+        dc.FillSolidRect(rect,RGB(167,220,234)); //设置为绿色背景
+		CDialog::OnPaint();
 	}
+	 // device context for painting
+	// TODO: 在此处添加消息处理程序代码
+	// 不为绘图消息调用 CDialog::OnPaint()
 }
 
-//当用户拖动最小化窗口时系统调用此函数取得光标
-//显示。
-HCURSOR CLPRS_ClientDlg::OnQueryDragIcon()
+void LPRS_ClientDlg::OnDestroy()
 {
-	return static_cast<HCURSOR>(m_hIcon);
+	if(m_hSocket!=NULL)
+	{
+		::closesocket(m_hSocket);
+	}
+
+	CDialog::OnDestroy();
+
+	// TODO: 在此处添加消息处理程序代码
 }
 
+BOOL LPRS_ClientDlg::DestroyWindow()
+{
+	// TODO: 在此添加专用代码和/或调用基类
+
+	if(m_hSocket)
+	{
+		closesocket(m_hSocket);
+
+	}
+	WSACleanup();
+	return CDialog::DestroyWindow();
+}
+
+HBRUSH LPRS_ClientDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+	HBRUSH hbr = CDialog::OnCtlColor(pDC, pWnd, nCtlColor);
+	if (nCtlColor==CTLCOLOR_STATIC)
+    {
+       // pDC->SetTextColor(RGB(0,0,0));  //字体颜色
+       pDC->SetBkColor(RGB(167,220,234));
+	  //pDC->SetBkMode(HOLLOW_BRUSH); //设置字体背景为透明
+    }
+	// TODO:  在此更改 DC 的任何属性
+
+	// TODO:  如果默认的不是所需画笔，则返回另一个画笔
+	return hbr;
+}
